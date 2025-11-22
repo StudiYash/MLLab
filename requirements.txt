@@ -6,3 +6,4 @@ matplotlib
 seaborn
 catboost
 tensorflow
+openpyxl
