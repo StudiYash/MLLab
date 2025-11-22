@@ -1183,16 +1183,71 @@ def page_spam():
 
         if st.button("Check if Spam"):
             result = predict_spam(bundle, email)
-            st.write("Email:", result["email"])
-            st.success(
-                f"Predicted: **{result['predicted_label']}** "
-                f"(class={result['predicted_class']}, prob_spam={result['probability_spam']:.4f}, "
-                f"confidence={result['confidence']:.4f})"
-            )
+            
+            label = str(result.get("predicted_label", "")).lower()
+            prob_spam = float(result.get("probability_spam", 0.0))
+            confidence = float(result.get("confidence", prob_spam))
+            confidence_pct = confidence * 100.0
+            prob_spam_pct = prob_spam * 100.0
+
+            st.markdown(f"**Email analyzed:** {result['email']}")
+
+            if "spam" in label:
+                # choose phrasing
+                if confidence_pct >= 80:
+                    summary = "This email is **very likely SPAM**."
+                elif confidence_pct >= 60:
+                    summary = "This email is **likely SPAM**."
+                else:
+                    summary = "This email **might be SPAM**, but the model is not very sure."
+
+                st.error(
+                    f"📧 **Spam Check Result**\n\n"
+                    f"{summary}\n\n"
+                    f"The model estimates about **{prob_spam_pct:.1f}% chance** that this message is spam "
+                    f"and is **{confidence_pct:.1f}% confident** in its decision."
+                )
+
+                st.markdown(
+                    "- Avoid clicking links or downloading attachments unless you completely trust the sender.\n"
+                    "- When in doubt, verify the email address and look for spelling/grammar mistakes."
+                )
+            else:
+                if confidence_pct >= 80:
+                    summary = "This email looks **safe (Not Spam)**."
+                elif confidence_pct >= 60:
+                    summary = "This email is **probably Not Spam**."
+                else:
+                    summary = "This email is **uncertain**, but leans towards Not Spam."
+
+                st.success(
+                    f"📧 **Spam Check Result**\n\n"
+                    f"{summary}\n\n"
+                    f"The model estimates only **{prob_spam_pct:.1f}% chance** that this message is spam "
+                    f"and is **{confidence_pct:.1f}% confident** in its decision."
+                )
+
+                st.markdown(
+                    "- Still be cautious with unexpected links or attachments.\n"
+                    "- If the email feels suspicious, double-check the sender or contact the service directly."
+                )
+
+            st.markdown("**Model confidence level:**")
+            st.progress(int(confidence_pct))
+
+            with st.expander("Show model details (for developers)"):
+                st.json(
+                    {
+                        "predicted_label": result.get("predicted_label"),
+                        "predicted_class": result.get("predicted_class"),
+                        "probability_spam": prob_spam,
+                        "confidence": confidence,
+                    }
+                )
 
     with col_right:
         st.subheader("📔Notebook View")
-        show_notebook_viewer("notebooks/SpamEmailDetection.ipynb", height=600)
+        show_notebook_viewer("notebooks/SpamEmailDetection.ipynb", height=700)
 
         if st.button("Open Jupyter File", key="open_spam_nb"):
             open_notebook_file("notebooks/SpamEmailDetection.ipynb")
