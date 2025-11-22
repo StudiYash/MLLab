@@ -949,21 +949,94 @@ def page_titanic():
         st.markdown("### 🧪 Interactive View")
         bundle = get_titanic_bundle()
 
-        st.subheader("Validation Metrics")
-        st.write(bundle.metrics)
+        # -------------------------------
+        # Model performance (no raw JSON)
+        # -------------------------------
+        st.subheader("Model Performance")
 
-        st.markdown("Configure a hypothetical passenger:")
+        raw_metrics = getattr(bundle, "metrics", {}) or {}
+        accuracy = float(raw_metrics.get("accuracy", 0.0))
+        precision_survived = float(raw_metrics.get("precision_survived", 0.0))
+        recall_survived = float(raw_metrics.get("recall_survived", 0.0))
+        f1_survived = float(raw_metrics.get("f1_survived", 0.0))
+
+        mcol1, mcol2, mcol3, mcol4 = st.columns(4)
+        with mcol1:
+            st.metric("Accuracy", f"{accuracy * 100:.1f}%")
+        with mcol2:
+            st.metric("Precision (Survived)", f"{precision_survived * 100:.1f}%")
+        with mcol3:
+            st.metric("Recall (Survived)", f"{recall_survived * 100:.1f}%")
+        with mcol4:
+            st.metric("F1-score (Survived)", f"{f1_survived * 100:.1f}%")
+
+        # Optional small text explanation
+        st.markdown(
+            """
+            These metrics are computed on a validation split of the **Kaggle Titanic dataset**,
+            focusing on the **Survived (1)** class.
+            """
+        )
+
+        st.markdown("---")
+
+        # -------------------------------
+        # Passenger configuration with friendly labels
+        # -------------------------------
+        st.markdown(
+            """
+            **Configure a hypothetical passenger:**  
+
+            - **Ticket Class** – 1 = First class, 2 = Second class, 3 = Third class  
+            - **Siblings/Spouses Onboard** – close family travelling with them (SibSp)  
+            - **Parents/Children Onboard** – parents or children travelling with them (Parch)  
+            - **Fare** – approximate ticket cost (as in the original dataset)  
+            - **Port of Embarkation** – S = Southampton, C = Cherbourg, Q = Queenstown  
+            """
+        )
 
         col1, col2 = st.columns(2)
         with col1:
-            pclass = st.selectbox("Pclass", options=[1, 2, 3], index=2)
-            sex = st.selectbox("Sex", options=["male", "female"], index=0)
-            age = st.number_input("Age", min_value=0.0, max_value=100.0, value=30.0)
+            pclass = st.selectbox(
+                "Ticket Class (1 = First, 2 = Second, 3 = Third)",
+                options=[1, 2, 3],
+                index=2,
+            )
+            sex = st.selectbox(
+                "Passenger Sex",
+                options=["male", "female"],
+                index=0,
+            )
+            age = st.number_input(
+                "Age (years)",
+                min_value=0.0,
+                max_value=100.0,
+                value=30.0,
+            )
         with col2:
-            sibsp = st.number_input("SibSp", min_value=0, max_value=10, value=0)
-            parch = st.number_input("Parch", min_value=0, max_value=10, value=0)
-            fare = st.number_input("Fare", min_value=0.0, max_value=600.0, value=32.2)
-            embarked = st.selectbox("Embarked", options=["S", "C", "Q"], index=0)
+            sibsp = st.number_input(
+                "Siblings/Spouses Onboard",
+                min_value=0,
+                max_value=10,
+                value=0,
+            )
+            parch = st.number_input(
+                "Parents/Children Onboard",
+                min_value=0,
+                max_value=10,
+                value=0,
+            )
+            fare = st.number_input(
+                "Ticket Fare",
+                min_value=0.0,
+                max_value=600.0,
+                value=32.2,
+            )
+            embarked = st.selectbox(
+                "Port of Embarkation (S, C, Q)",
+                options=["S", "C", "Q"],
+                index=0,
+            )
 
         if st.button("Predict Survival"):
             example = {
@@ -977,14 +1050,31 @@ def page_titanic():
             }
             result = predict_survival(bundle, example)
 
-            st.write(
-                f"Predicted: **{result['predicted_class_name']}** "
-                f"(prob_survived={result['probability_survived']:.3f})"
+            prob_survived = float(result["probability_survived"])
+            prob_percent = prob_survived * 100.0
+            label = result["predicted_class_name"]  # "Survived" or "Not Survived"
+
+            if label.lower().startswith("survived"):
+                st.success(
+                    f"🛟 The model estimates a **{prob_percent:.1f}% chance** that this passenger "
+                    f"**would survive**.\n\n"
+                    f"Because this probability is above 50%, the final prediction is **Survived**."
+                )
+            else:
+                st.error(
+                    f"⚠️ The model estimates a **{prob_percent:.1f}% chance** that this passenger "
+                    f"**would survive**.\n\n"
+                    f"Because this probability is below 50%, the final prediction is **Not Survived**."
+                )
+
+            st.caption(
+                "This is a statistical estimate based on the Kaggle Titanic dataset – "
+                "it explains what the model has learned, not a real-life guarantee."
             )
 
     with col_right:
         st.subheader("📔Notebook View")
-        show_notebook_viewer("notebooks/TitanicSurvivalPrediction.ipynb", height=600)
+        show_notebook_viewer("notebooks/TitanicSurvivalPrediction.ipynb", height=1100)
 
         if st.button("Open Jupyter File", key="open_titanic_nb"):
             open_notebook_file("notebooks/TitanicSurvivalPrediction.ipynb")

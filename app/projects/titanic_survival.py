@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 
 @dataclass
 class TitanicModelBundle:
@@ -151,12 +151,28 @@ def train_titanic_model(
     y_pred = model.predict(X_val)
     accuracy = accuracy_score(y_val, y_pred)
     
+    # Calculate precision, recall, f1 for the "Survived" class (1)
+    precision, recall, f1, _ = precision_recall_fscore_support(
+        y_val,
+        y_pred,
+        pos_label=1,
+        average="binary",
+        zero_division=0
+    )
+
+    metrics = {
+        "accuracy": float(accuracy),
+        "precision_survived": float(precision),
+        "recall_survived": float(recall),
+        "f1_survived": float(f1),
+    }
+    
     return TitanicModelBundle(
         model=model,
         feature_names=X.columns.tolist(),
         feature_means=feature_means,
         feature_modes=feature_modes,
-        metrics={"accuracy": accuracy}
+        metrics=metrics
     )
 
 def predict_survival(
