@@ -1348,50 +1348,153 @@ def page_movie_recommender():
         st.markdown("### 🧪 Interactive View")
         bundle = get_movie_recommender_bundle()
 
-        st.subheader("Dataset Overview")
-        st.write(f"Number of movies: `{len(bundle.movie_stats)}`")
-        st.write(bundle.movie_stats.head())
+        # 1) Dataset Snapshot
+        st.subheader("📊 Dataset Snapshot")
+        
+        # Metrics
+        m1, m2, m3 = st.columns(3)
+        
+        # Metric 1: Total movies
+        with m1:
+            st.metric("Movies in catalog", len(bundle.movie_stats))
+            
+        # Metric 2: Most rated
+        most_rated_idx = bundle.movie_stats["rating_count"].idxmax()
+        most_rated_row = bundle.movie_stats.loc[most_rated_idx]
+        with m2:
+            st.metric("Most-rated movie", most_rated_idx)
+            st.caption(f"{int(most_rated_row['rating_count'])} ratings · {most_rated_row['rating_mean']:.2f} ★")
+
+        # Metric 3: Rating range
+        with m3:
+            st.metric("Typical rating range", "1.0 – 5.0 ★")
+
+        # Preview Table
+        preview_df = bundle.movie_stats.head().copy()
+        preview_df.index.name = "Movie"
+        preview_df = preview_df.reset_index()
+        preview_df = preview_df.rename(columns={
+            "rating_count": "# Ratings",
+            "rating_mean": "Avg Rating (★)"
+        })
+        st.dataframe(preview_df[["Movie", "# Ratings", "Avg Rating (★)"]], hide_index=True)
 
         st.markdown(
-            """
-        The recommender is **item–item correlation based**.  
-        Give it a movie title and it returns similar movies with high rating correlation
-        and sufficient rating counts.
-        """
+            "This dataset contains user ratings for movies. "
+            "We use **rating patterns** (not genres) to find films that tend to be liked by the same people."
+        )
+        
+        st.markdown("---")
+
+        # 2) Inputs
+        st.markdown(
+            "Give the recommender a movie you like and some filters. "
+            "It will look for **movies with similar rating patterns**."
         )
 
         default_movie = bundle.movie_stats.sort_values(
             by="rating_count", ascending=False
         ).head(1).index.tolist()[0]
+        
+        titles = bundle.movie_stats.index.tolist()
+        
+        # Ensure default is in list
+        default_idx = 0
+        if default_movie in titles:
+            default_idx = titles.index(default_movie)
 
-        movie_title = st.text_input("Movie title", value=default_movie)
-
-        min_ratings = st.number_input(
-            "Minimum number of ratings", min_value=1, max_value=500, value=bundle.min_ratings_default
+        movie_title = st.selectbox(
+            "Movie you already like",
+            options=titles,
+            index=default_idx,
+            help="Pick a movie you enjoy; we’ll suggest similar ones based on user rating patterns."
         )
 
-        top_n = st.number_input("Number of recommendations", min_value=1, max_value=20, value=5)
+        col_filters1, col_filters2 = st.columns(2)
+        with col_filters1:
+            min_ratings = st.number_input(
+                "Only show movies with at least this many ratings",
+                min_value=1,
+                max_value=500,
+                value=bundle.min_ratings_default,
+                help="Higher = more reliable but fewer movies. Lower = more variety but noisier."
+            )
+        with col_filters2:
+            top_n = st.number_input(
+                "How many recommendations do you want?",
+                min_value=1,
+                max_value=20,
+                value=5,
+                help="We’ll return up to this many similar movies."
+            )
 
         if st.button("Get Recommendations"):
             result = safe_recommend(bundle, movie_title, top_n=top_n, min_ratings=min_ratings)
 
             if "error" in result and result["error"]:
-                st.error(result["error"])
+                 st.error(
+                    "I couldn't find matching recommendations for that input. "
+                    "Try selecting a title from the dropdown and/or lowering the "
+                    "minimum number of ratings."
+                )
             else:
-                st.subheader(f"Recommendations for: {result['query']}")
+                # 3) Results
+                st.subheader(f"🎬 Because you liked: {result['query']}")
+                
                 rows = result.get("results", [])
                 if not rows:
-                    st.write("No recommendations found. Try lowering min_ratings.")
+                     st.info("No recommendations found. Try lowering the minimum rating filter.")
                 else:
-                    for r in rows:
-                        st.write(
-                            f"**{r['title']}** – corr={r['correlation']:.3f}, "
-                            f"count={r['rating_count']}, mean_rating={r['rating_mean']:.2f}"
-                        )
+                    # Build DataFrame
+                    res_df = pd.DataFrame(rows)
+                    
+                    # Top pick
+                    top = rows[0]
+                    st.markdown(
+                        f"**⭐ Top Pick:** {top['title']}  \n"
+                        f"Similarity: `{top['correlation']:.3f}` · "
+                        f"Ratings: `{top['rating_count']}` · "
+                        f"Avg rating: `{top['rating_mean']:.2f} ★`"
+                    )
+                    
+                    # Styled Table
+                    res_df["Similarity (%)"] = res_df["correlation"] * 100
+                    
+                    # Rename
+                    res_df = res_df.rename(columns={
+                        "title": "Movie",
+                        "correlation": "Similarity score",
+                        "rating_count": "# Ratings",
+                        "rating_mean": "Avg Rating (★)"
+                    })
+                    
+                    final_df = res_df[["Movie", "Similarity (%)", "# Ratings", "Avg Rating (★)"]].copy()
+                    
+                    st.markdown("Here are movies that people who liked this film also tend to enjoy:")
+                    st.dataframe(
+                        final_df.style.format({
+                            "Similarity (%)": "{:.1f}%",
+                            "Avg Rating (★)": "{:.2f}"
+                        }),
+                        hide_index=True
+                    )
+
+                # 4) Explanation
+                with st.expander("How are these recommendations generated?"):
+                    st.markdown(
+                        """
+                        This recommender is **item–item correlation based**:
+
+                        - We look at how users rate pairs of movies.
+                        - If people who like your chosen movie also give high ratings to another movie,
+                          their **rating patterns are highly correlated**.
+                        - Movies with higher similarity scores are more likely to match your taste.
+                        """
+                    )
 
     with col_right:
         st.subheader("📔Notebook View")
-        show_notebook_viewer("notebooks/MovieRecommendationSystem.ipynb", height=600)
+        show_notebook_viewer("notebooks/MovieRecommendationSystem.ipynb", height=800)
 
         if st.button("Open Jupyter File", key="open_movie_nb"):
             open_notebook_file("notebooks/MovieRecommendationSystem.ipynb")
