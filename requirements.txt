@@ -7,3 +7,4 @@ seaborn
 catboost
 tensorflow
 openpyxl
+xgboost
