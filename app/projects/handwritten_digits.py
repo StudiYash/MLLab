@@ -8,7 +8,8 @@ This module provides:
 """
 
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, Tuple, IO
+from PIL import Image
 
 import numpy as np
 import pandas as pd
@@ -31,6 +32,9 @@ class DigitModelBundle:
     X_val: np.ndarray         # validation images
     y_val: np.ndarray         # validation labels (one-hot)
     val_accuracy: float
+    metrics: Dict[str, float]  # e.g. train/val accuracy & loss
+    n_train: int
+    n_val: int
 
 def get_digits_csv_path() -> Path:
     """
@@ -132,6 +136,22 @@ def train_digit_model(
     # Get validation accuracy
     val_loss, val_accuracy = model.evaluate(X_val, y_val, verbose=0)
 
+    history_dict = history.history if hasattr(history, "history") else {}
+
+    def _last_or_default(key: str, default: float = 0.0) -> float:
+        values = history_dict.get(key, [])
+        return float(values[-1]) if values else float(default)
+
+    metrics = {
+        "train_accuracy": _last_or_default("accuracy"),
+        "val_accuracy": _last_or_default("val_accuracy"),
+        "train_loss": _last_or_default("loss"),
+        "val_loss": _last_or_default("val_loss"),
+    }
+
+    n_train = int(X_train.shape[0])
+    n_val = int(X_val.shape[0])
+
     return DigitModelBundle(
         model=model,
         input_shape=input_shape,
@@ -139,7 +159,10 @@ def train_digit_model(
         class_labels=class_labels,
         X_val=X_val,
         y_val=y_val,
-        val_accuracy=val_accuracy
+        val_accuracy=val_accuracy,
+        metrics=metrics,
+        n_train=n_train,
+        n_val=n_val,
     )
 
 def predict_single_digit(bundle: DigitModelBundle, image_array: np.ndarray) -> Dict[str, object]:
@@ -168,3 +191,34 @@ def predict_single_digit(bundle: DigitModelBundle, image_array: np.ndarray) -> D
         "confidence": confidence,
         "probabilities": probs.tolist(),
     }
+
+def preprocess_uploaded_digit_image(file_obj: IO[bytes]) -> np.ndarray:
+    """
+    Takes an uploaded image file (Streamlit's UploadedFile or any file-like object),
+    converts it to a 28x28 grayscale image, normalizes it to [0, 1],
+    applies a simple inversion heuristic if needed, and returns
+    a flattened vector of shape (784,) suitable for the model.
+    """
+    # Load image as grayscale
+    img = Image.open(file_obj).convert("L")  # "L" = 8-bit pixels, black and white
+
+    # Resize to 28x28 (same as training)
+    img = img.resize((28, 28))
+
+    # Convert to numpy and normalize
+    arr = np.array(img).astype("float32") / 255.0
+
+    # Simple heuristic: if the image is mostly light (white background, dark digit),
+    # keep as-is; if mostly dark, invert.
+    if arr.mean() > 0.5:
+        # Mostly white -> assume white background, dark digit
+        # (this is typical MNIST-style; we might not need inversion here)
+        pass
+    else:
+        # Mostly dark -> invert so background is light and digit is dark
+        arr = 1.0 - arr
+
+    # Flatten to a vector of 784 elements
+    arr_flat = arr.reshape(-1)
+
+    return arr_flat

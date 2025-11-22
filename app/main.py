@@ -17,6 +17,8 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 # ==== Import project backends ====
 
+# ==== Import project backends ====
+
 from app.projects.breast_cancer import (
     train_breast_cancer_model,
     predict_from_partial_features,
@@ -26,6 +28,7 @@ from app.projects.handwritten_digits import (
     train_digit_model,
     DigitModelBundle,
     predict_single_digit,
+    preprocess_uploaded_digit_image,
 )
 
 from app.projects.house_price import (
@@ -310,19 +313,57 @@ def page_handwritten_digits():
 
     with col_left:
         st.markdown("### 🧪 Interactive View")
-        st.markdown(
-            """
-        This model is trained on a CSV version of a digit dataset (784 pixel columns).  
-        For now, we provide a quick **random-sample demo**: we pick one validation image
-        from the trained model and run inference.
-        """
-        )
-
         bundle = get_digit_bundle()
 
-        st.subheader("Validation Set Snapshot")
-        st.write(f"Validation set size: {bundle.X_val.shape[0]} images")
-        st.write(f"Validation accuracy (from training): `{bundle.val_accuracy:.4f}`")
+        # Short description
+        st.markdown(
+            """
+            This model is trained on a CSV version of a handwritten digit dataset
+            where each row is a flattened **28×28 grayscale image** (784 pixel values)
+            fed into a dense neural network.
+            """
+        )
+
+        # --- Metrics panel ---
+        st.subheader("Validation Metrics & Dataset Size")
+
+        metrics = getattr(bundle, "metrics", {}) or {}
+        n_train = getattr(bundle, "n_train", None)
+        n_val = getattr(bundle, "n_val", None)
+
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+
+        train_acc = metrics.get("train_accuracy")
+        val_acc = metrics.get("val_accuracy")
+        train_loss = metrics.get("train_loss")
+        val_loss = metrics.get("val_loss")
+
+        with col_m1:
+            if train_acc is not None:
+                st.metric("Train Accuracy", f"{train_acc * 100:.2f}%")
+        with col_m2:
+            if val_acc is not None:
+                st.metric("Val Accuracy", f"{val_acc * 100:.2f}%")
+        with col_m3:
+            if train_loss is not None:
+                st.metric("Train Loss", f"{train_loss * 100:.4f}%")
+        with col_m4:
+            if val_loss is not None:
+                st.metric("Val Loss", f"{val_loss * 100:.4f}%")
+
+        # Dataset sizes
+        lines = []
+        if n_train is not None:
+            lines.append(f"- Training set size: **{n_train}** images")
+        if n_val is not None:
+            lines.append(f"- Validation set size: **{n_val}** images")
+        if lines:
+            st.markdown("\n".join(lines))
+
+        st.markdown("---")
+
+        # --- Random validation image demo ---
+        st.subheader("Quick Demo – Random Validation Image")
 
         if st.button("Run prediction on a random validation image"):
             import numpy as np
@@ -339,10 +380,40 @@ def page_handwritten_digits():
                 f"Predicted label: **{result['predicted_label']}** "
                 f"(class={result['predicted_class']}, confidence={result['confidence']:.4f})"
             )
+
+        st.markdown("---")
+
+        # --- User-uploaded digit demo ---
+        st.subheader("Try Your Own Digit")
+
+        uploaded_file = st.file_uploader(
+            "Upload a handwritten digit image (PNG/JPG, roughly 28×28 or square):",
+            type=["png", "jpg", "jpeg"],
+        )
+
+        if uploaded_file is not None:
+            st.image(uploaded_file, caption="Uploaded digit", width=150)
+
+            if st.button("Predict Uploaded Digit"):
+                # We already imported preprocess_uploaded_digit_image at top-level
+                # but just to be safe/explicit or if user wanted it inside:
+                # from app.projects.handwritten_digits import preprocess_uploaded_digit_image
+
+                try:
+                    processed = preprocess_uploaded_digit_image(uploaded_file)
+                    result = predict_single_digit(bundle, processed)
+
+                    st.write(
+                        f"Predicted label: **{result['predicted_label']}** "
+                        f"(class={result['predicted_class']}, "
+                        f"confidence={result['confidence']:.4f})"
+                    )
+                except Exception as e:
+                    st.error(f"Could not process uploaded image: {e}")
             
     with col_right:
         st.subheader("📔Notebook View")
-        show_notebook_viewer("notebooks/HandwrittenDigitDetection.ipynb", height=600)
+        show_notebook_viewer("notebooks/HandwrittenDigitDetection.ipynb", height=850)
 
         if st.button("Open Jupyter File", key="open_digits_nb"):
             open_notebook_file("notebooks/HandwrittenDigitDetection.ipynb")
@@ -398,7 +469,7 @@ def page_house_price():
 
     with col_right:
         st.subheader("📔Notebook View")
-        show_notebook_viewer("notebooks/HousePricePrediction.ipynb", height=600)
+        show_notebook_viewer("notebooks/HousePricePrediction.ipynb", height=800)
 
         if st.button("Open Jupyter File", key="open_house_nb"):
             open_notebook_file("notebooks/HousePricePrediction.ipynb")
