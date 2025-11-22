@@ -9,6 +9,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 import streamlit as st
+import pandas as pd
 
 import os
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -223,9 +224,46 @@ def page_breast_cancer():
         st.markdown("### 🧪 Interactive View")
         bundle = get_breast_cancer_bundle()
 
-        st.subheader("Model Metrics")
-        st.write(bundle.metrics)
+        st.subheader("Model Performance")
 
+        # Safely extract metrics with defaults in case keys are missing
+        raw_metrics = bundle.metrics if isinstance(bundle.metrics, dict) else {}
+        accuracy  = float(raw_metrics.get("accuracy", 0.0))
+        precision = float(raw_metrics.get("precision", 0.0))
+        recall    = float(raw_metrics.get("recall", 0.0))
+        f1_score  = float(raw_metrics.get("f1", 0.0))
+
+        # --- KPI cards (top row) ---
+        mcol1, mcol2, mcol3, mcol4 = st.columns(4)
+        with mcol1:
+            st.metric("Accuracy", f"{accuracy * 100:.2f}%")
+        with mcol2:
+            st.metric("Precision", f"{precision * 100:.2f}%")
+        with mcol3:
+            st.metric("Recall", f"{recall * 100:.2f}%")
+        with mcol4:
+            st.metric("F1-score", f"{f1_score * 100:.2f}%")
+
+        # --- Detailed table ---
+        st.markdown("#### Detailed Scores")
+        metrics_df = pd.DataFrame(
+            [
+                {"Metric": "Accuracy",  "Score": accuracy},
+                {"Metric": "Precision", "Score": precision},
+                {"Metric": "Recall",    "Score": recall},
+                {"Metric": "F1-score",  "Score": f1_score},
+            ]
+        )
+        st.table(metrics_df.style.format({"Score": "{:.4f}"}))
+
+        # --- Bar chart for visual comparison ---
+        st.markdown("#### Visual Comparison")
+        chart_df = metrics_df.copy()
+        chart_df["Score (%)"] = chart_df["Score"] * 100
+        chart_df = chart_df.set_index("Metric")
+        st.bar_chart(chart_df["Score (%)"])
+
+        # Existing explanation text (keep this below the visuals)
         st.markdown(
             """
         We use the **sklearn breast cancer dataset**.  
@@ -259,7 +297,7 @@ def page_breast_cancer():
 
     with col_right:
         st.subheader("📔Notebook View")
-        show_notebook_viewer("notebooks/BreastCancerPrediction.ipynb", height=600)
+        show_notebook_viewer("notebooks/BreastCancerPrediction.ipynb", height=1100)
 
         if st.button("Open Jupyter File", key="open_bc_nb"):
             open_notebook_file("notebooks/BreastCancerPrediction.ipynb")
