@@ -1264,7 +1264,38 @@ def page_stock():
         df = get_stock_dataframe()
 
         st.subheader("Model Validation Metrics")
-        st.write(bundle.metrics)
+        
+        metrics = getattr(bundle, "metrics", {}) or {}
+        accuracy = float(metrics.get("accuracy", 0.0))
+        precision = float(metrics.get("precision", 0.0))
+        recall = float(metrics.get("recall", 0.0))
+
+        # KPI Cards
+        k1, k2, k3 = st.columns(3)
+        with k1:
+            st.metric("Accuracy", f"{accuracy * 100:.2f}%")
+        with k2:
+            st.metric("Precision", f"{precision * 100:.2f}%")
+        with k3:
+            st.metric("Recall", f"{recall * 100:.2f}%")
+
+        # Detailed Table & Chart
+        metrics_df = pd.DataFrame(
+            [
+                {"Metric": "Accuracy",  "Score": accuracy},
+                {"Metric": "Precision", "Score": precision},
+                {"Metric": "Recall",    "Score": recall},
+            ]
+        )
+
+        st.markdown("#### Detailed Scores")
+        st.table(metrics_df.style.format({"Score": "{:.4f}"}))
+
+        st.markdown("#### Visual Comparison")
+        chart_df = metrics_df.copy()
+        chart_df["Score (%)"] = chart_df["Score"] * 100
+        chart_df = chart_df.set_index("Metric")
+        st.bar_chart(chart_df["Score (%)"])
 
         st.markdown(
             """
@@ -1276,18 +1307,33 @@ def page_stock():
         if st.button("Predict Next-Day Movement (using latest data)"):
             try:
                 result = predict_next_day_movement(bundle, df)
-                st.success(
-                    f"Prediction: **{result['predicted_label'].upper()}** "
-                    f"(class={result['predicted_class']}, "
-                    f"P(up)={result['probability_up']:.3f}, "
-                    f"confidence={result['confidence']:.3f})"
+                
+                label = str(result.get("predicted_label", "")).upper()
+                prob_up = float(result.get("probability_up", 0.0))
+                confidence = float(result.get("confidence", prob_up))  # fallback
+
+                if label == "UP":
+                    headline = "The model thinks **Tesla will close HIGHER tomorrow**."
+                else:
+                    headline = "The model thinks **Tesla will close LOWER tomorrow**."
+
+                st.success(headline)
+                st.write(
+                    f"- Estimated chance of price closing higher: **{prob_up * 100:.1f}%**"
                 )
+                st.write(
+                    f"- Model confidence in this prediction: **{confidence * 100:.1f}%**"
+                )
+                st.caption(
+                    "Note: This is an educational demo, not financial advice."
+                )
+
             except Exception as e:
                 st.error(f"Error during prediction: {e}")
 
     with col_right:
         st.subheader("📔Notebook View")
-        show_notebook_viewer("notebooks/StockPricePrediction.ipynb", height=600)
+        show_notebook_viewer("notebooks/StockPricePrediction.ipynb", height=900)
 
         if st.button("Open Jupyter File", key="open_stock_nb"):
             open_notebook_file("notebooks/StockPricePrediction.ipynb")
