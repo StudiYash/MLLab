@@ -429,7 +429,47 @@ def page_house_price():
         bundle = get_house_price_bundle()
 
         st.subheader("Per-Model Metrics")
-        st.write(bundle.metrics)
+
+        raw_metrics = getattr(bundle, "metrics", {}) or {}
+
+        rows = []
+        name_map = {
+            "svr": "SVR (Support Vector Regression)",
+            "rf": "Random Forest Regressor",
+            "lr": "Linear Regression",
+        }
+
+        for key, values in raw_metrics.items():
+            mae = float(values.get("mae", 0.0))
+            mape = float(values.get("mape", 0.0)) * 100.0  # convert from fraction to %
+            rows.append(
+                {
+                    "Model": name_map.get(key, key.upper()),
+                    "MAE (₹)": mae,
+                    "MAPE (%)": mape,
+                }
+            )
+
+        if rows:
+            metrics_df = pd.DataFrame(rows)
+
+            # Nicely formatted table
+            st.markdown("#### Model Performance Summary")
+            st.table(
+                metrics_df.style.format(
+                    {
+                        "MAE (₹)": "{:,.2f}",
+                        "MAPE (%)": "{:.2f}",
+                    }
+                )
+            )
+
+            # Simple bar chart for MAPE comparison
+            st.markdown("#### MAPE Comparison (%)")
+            chart_df = metrics_df.set_index("Model")[["MAPE (%)"]]
+            st.bar_chart(chart_df)
+        else:
+            st.info("Model metrics are not available.")
 
         st.markdown(
             """
@@ -441,17 +481,49 @@ def page_house_price():
         """
         )
 
-        # We don't know all feature names without inspecting X,
-        # but users can still experiment with a couple of obvious ones:
-        # Typical Kaggle house price cols: 'OverallQual', 'GrLivArea', etc.
+        st.markdown(
+            """
+            #### Input Features
+
+            Adjust a few key characteristics of the house below. The remaining engineered
+            features are filled with default values behind the scenes.
+            """
+        )
+
         col1, col2 = st.columns(2)
+
         with col1:
-            overall_qual = st.number_input("OverallQual (1–10)", min_value=1, max_value=10, value=7)
-            gr_liv_area = st.number_input("GrLivArea (sq ft)", min_value=300, max_value=6000, value=1500)
+            overall_qual = st.slider(
+                "Overall house quality (1–10)",
+                min_value=1,
+                max_value=10,
+                value=7,
+                help="Overall material and finish quality of the house. 1 = Very poor, 10 = Excellent.",
+            )
+
+            gr_liv_area = st.number_input(
+                "Above-ground living area (sq ft)",
+                min_value=300,
+                max_value=6000,
+                value=1500,
+                help="Total living area above ground level, in square feet.",
+            )
+
         with col2:
-            garage_cars = st.number_input("GarageCars", min_value=0, max_value=4, value=2)
+            garage_cars = st.slider(
+                "Number of car spaces in garage",
+                min_value=0,
+                max_value=4,
+                value=2,
+                help="How many cars can comfortably fit in the garage.",
+            )
+
             total_bsmt_sf = st.number_input(
-                "TotalBsmtSF (sq ft)", min_value=0, max_value=4000, value=800
+                "Basement area (sq ft)",
+                min_value=0,
+                max_value=4000,
+                value=800,
+                help="Total basement area (finished + unfinished), in square feet.",
             )
 
         if st.button("Predict SalePrice with all models"):
@@ -463,13 +535,60 @@ def page_house_price():
             }
 
             preds = predict_house_price(bundle, input_data)
-            st.subheader("Predicted Prices")
-            for model_name, price in preds.items():
-                st.write(f"**{model_name.upper()}**: `{price:,.2f}`")
+
+            st.subheader("Predicted Sale Price (by model)")
+
+            # Friendly names for display
+            name_map = {
+                "svr": "SVR – Support Vector Regression",
+                "rf": "Random Forest Regressor",
+                "lr": "Linear Regression",
+            }
+
+            # Build a small table
+            rows = []
+            for key, price in preds.items():
+                rows.append(
+                    {
+                        "Model": name_map.get(key.lower(), key.upper()),
+                        "Estimated Price (₹)": float(price),
+                    }
+                )
+
+            if rows:
+                pred_df = pd.DataFrame(rows)
+
+                # Nicely formatted table
+                st.table(
+                    pred_df.style.format({"Estimated Price (₹)": "₹ {:,.0f}"})
+                )
+
+                # Optional: highlight which model was best during training (lowest MAE)
+                raw_metrics = getattr(bundle, "metrics", {}) or {}
+                best_model_key = None
+                best_mae = float("inf")
+
+                for key, vals in raw_metrics.items():
+                    mae = float(vals.get("mae", float("inf")))
+                    if mae < best_mae:
+                        best_mae = mae
+                        best_model_key = key
+
+                if best_model_key is not None and best_model_key in preds:
+                    best_label = name_map.get(best_model_key.lower(), best_model_key.upper())
+                    best_price = preds[best_model_key]
+                    st.info(
+                        f"Based on training performance (lowest MAE), "
+                        f"**{best_label}** is the most reliable estimate here: "
+                        f"≈ **₹ {best_price:,.0f}**"
+                    )
+            else:
+                st.warning("No predictions were returned by the models.")
+
 
     with col_right:
         st.subheader("📔Notebook View")
-        show_notebook_viewer("notebooks/HousePricePrediction.ipynb", height=800)
+        show_notebook_viewer("notebooks/HousePricePrediction.ipynb", height=1400)
 
         if st.button("Open Jupyter File", key="open_house_nb"):
             open_notebook_file("notebooks/HousePricePrediction.ipynb")
@@ -484,18 +603,55 @@ def page_iris():
         st.markdown("### 🧪 Interactive View")
         bundle = get_iris_bundle()
 
-        st.subheader("Model Metrics")
-        st.write(bundle.metrics)
+        st.subheader("Model Performance")
+        metrics = getattr(bundle, "metrics", {}) or {}
+        accuracy = float(metrics.get("accuracy", 0.0))
 
-        st.markdown("Enter petal & sepal measurements in **cm**:")
+        kpi_col1, kpi_col2 = st.columns(2)
+        with kpi_col1:
+            st.metric("Accuracy", f"{accuracy * 100:.2f}%", help="Share of flowers correctly classified on the test set.")
+
+        if metrics:
+            st.markdown("#### Detailed metrics")
+            metrics_df = pd.DataFrame(
+                [{"Metric": k, "Value": float(v)} for k, v in metrics.items()]
+            )
+            st.table(metrics_df.style.format({"Value": "{:.4f}"}))
+
+        if metrics and len(metrics) > 1:
+            chart_df = metrics_df.set_index("Metric").copy()
+            st.bar_chart(chart_df["Value"])
+
+        st.markdown(
+            """
+            **Feature guide**
+
+            - **Sepal length (cm)** – length of the outer flower part (sepal)
+            - **Sepal width (cm)** – width of the sepal
+            - **Petal length (cm)** – length of the inner petal
+            - **Petal width (cm)** – width of the petal
+            """
+        )
 
         col1, col2 = st.columns(2)
         with col1:
-            sepal_len = st.number_input("SepalLengthCm", min_value=0.0, max_value=10.0, value=5.1)
-            sepal_wid = st.number_input("SepalWidthCm", min_value=0.0, max_value=10.0, value=3.5)
+            sepal_len = st.number_input(
+                "Sepal length (cm)",
+                min_value=0.0, max_value=10.0, value=5.1
+            )
+            sepal_wid = st.number_input(
+                "Sepal width (cm)",
+                min_value=0.0, max_value=10.0, value=3.5
+            )
         with col2:
-            petal_len = st.number_input("PetalLengthCm", min_value=0.0, max_value=10.0, value=1.4)
-            petal_wid = st.number_input("PetalWidthCm", min_value=0.0, max_value=10.0, value=0.2)
+            petal_len = st.number_input(
+                "Petal length (cm)",
+                min_value=0.0, max_value=10.0, value=1.4
+            )
+            petal_wid = st.number_input(
+                "Petal width (cm)",
+                min_value=0.0, max_value=10.0, value=0.2
+            )
 
         if st.button("Predict Species"):
             sample = {
@@ -505,8 +661,37 @@ def page_iris():
                 "PetalWidthCm": petal_wid,
             }
             result = iris_predict_from_features(bundle, sample)
-            st.success(f"Predicted: **{result['predicted_label']}**")
-            st.write(f"Probabilities: {result['probabilities']}")
+            predicted = result.get("predicted_label", "Unknown")
+            st.success(f"The model predicts this flower is **{predicted}**.")
+
+            probs = result.get("probabilities", None)
+            if probs is not None:
+                # Case 1: dict of class_name -> prob
+                if isinstance(probs, dict):
+                    prob_items = [{"Species": k, "Probability": float(v)} for k, v in probs.items()]
+                else:
+                    # Fallback: if it's a list/ndarray, try to pair with a 'class_labels' attribute on the bundle
+                    labels = getattr(bundle, "class_labels", None)
+                    if labels is not None and len(labels) == len(probs):
+                        prob_items = [
+                            {"Species": str(lbl), "Probability": float(p)}
+                            for lbl, p in zip(labels, probs)
+                        ]
+                    else:
+                        prob_items = []
+
+                if prob_items:
+                    st.markdown("#### Class probabilities")
+                    prob_df = pd.DataFrame(prob_items)
+                    # Show as percentages in the table
+                    st.table(prob_df.style.format({"Probability": "{:.2%}"}))
+
+                    # Also show a bar chart for quick comparison
+                    chart_df = prob_df.set_index("Species")
+                    st.bar_chart(chart_df["Probability"])
+                else:
+                    # Last-resort fallback: just print the raw object
+                    st.write("Probabilities:", probs)
 
     with col_right:
         st.subheader("📔Notebook View")
