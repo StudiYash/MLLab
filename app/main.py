@@ -695,7 +695,7 @@ def page_iris():
 
     with col_right:
         st.subheader("📔Notebook View")
-        show_notebook_viewer("notebooks/IrisFlowerClassification.ipynb", height=600)
+        show_notebook_viewer("notebooks/IrisFlowerClassification.ipynb", height=850)
 
         if st.button("Open Jupyter File", key="open_iris_nb"):
             open_notebook_file("notebooks/IrisFlowerClassification.ipynb")
