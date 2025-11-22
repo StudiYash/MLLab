@@ -8,3 +8,5 @@ catboost
 tensorflow
 openpyxl
 xgboost
+nbformat
+nbconvert
