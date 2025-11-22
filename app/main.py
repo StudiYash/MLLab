@@ -710,27 +710,112 @@ def page_diabetes():
         st.markdown("### 🧪 Interactive View")
         bundle = get_diabetes_bundle()
 
-        st.subheader("Model Accuracies")
-        st.write(bundle.metrics)
+        # ------------------------------------------------------------------
+        # 1) MODEL METRICS – KPI cards + table + bar chart
+        # ------------------------------------------------------------------
+        st.subheader("Model Performance")
 
+        raw_metrics = getattr(bundle, "metrics", {}) or {}
+
+        # Map short keys to human-readable model names
+        name_map = {
+            "rfc": "Random Forest (RFC)",
+            "dt": "Decision Tree (DT)",
+            "xgb": "XGBoost (XGB)",
+            "svc": "Support Vector Classifier (SVC)",
+        }
+
+        rows = []
+        for key, inner in raw_metrics.items():
+            if not isinstance(inner, dict):
+                continue
+            acc = inner.get("accuracy")
+            if acc is None:
+                continue
+            pretty_name = name_map.get(key, key.upper())
+            rows.append(
+                {
+                    "Model": pretty_name,
+                    "Accuracy": float(acc),
+                    "Accuracy (%)": float(acc) * 100.0,
+                }
+            )
+
+        if rows:
+            metrics_df = pd.DataFrame(rows)
+
+            # KPI row
+            kpi_cols = st.columns(len(rows))
+            for col, row in zip(kpi_cols, rows):
+                with col:
+                    st.metric(
+                        row["Model"],
+                        f"{row['Accuracy (%)']:.2f} %",
+                    )
+
+            # Detailed table
+            st.markdown("#### Detailed Metrics")
+            st.table(
+                metrics_df[["Model", "Accuracy (%)"]].style.format(
+                    {"Accuracy (%)": "{:.2f}"}
+                )
+            )
+
+            # Simple bar chart
+            st.markdown("#### Accuracy Comparison")
+            chart_df = metrics_df.set_index("Model")["Accuracy (%)"]
+            st.bar_chart(chart_df)
+
+        # ------------------------------------------------------------------
+        # 2) INPUT FORM – same variables, better explanations
+        # ------------------------------------------------------------------
         st.markdown(
             """
-        We treat zeros as missing in several medical fields and impute them cleverly
-        for training. Here, you can supply a subset of features; missing fields default
-        to dataset-level means.
-        """
+We treat **0 values as missing** in several medical fields and impute them
+smartly during training.  
+You can fill in the values you know – missing ones will fall back to typical
+dataset averages.
+"""
         )
 
         col1, col2 = st.columns(2)
         with col1:
-            pregnancies = st.number_input("Pregnancies", min_value=0, max_value=20, value=2)
-            glucose = st.number_input("Glucose", min_value=0.0, max_value=300.0, value=120.0)
+            pregnancies = st.number_input(
+                "Pregnancies",
+                min_value=0,
+                max_value=20,
+                value=2,
+                help="Number of times you have been pregnant (0 if never).",
+            )
+            glucose = st.number_input(
+                "Glucose (mg/dL)",
+                min_value=0.0,
+                max_value=300.0,
+                value=120.0,
+                help="Blood sugar level measured in a glucose tolerance test.",
+            )
             blood_pressure = st.number_input(
-                "BloodPressure", min_value=0.0, max_value=200.0, value=70.0
+                "Blood Pressure (mm Hg)",
+                min_value=0.0,
+                max_value=200.0,
+                value=70.0,
+                help="Diastolic blood pressure (the lower number in a BP reading).",
             )
         with col2:
-            bmi = st.number_input("BMI", min_value=0.0, max_value=70.0, value=30.0)
-            age = st.number_input("Age", min_value=10, max_value=120, value=35)
+            bmi = st.number_input(
+                "BMI (kg/m²)",
+                min_value=0.0,
+                max_value=70.0,
+                value=30.0,
+                help="Body Mass Index – weight relative to height.",
+            )
+            age = st.number_input(
+                "Age (years)",
+                min_value=10,
+                max_value=120,
+                value=35,
+                help="Your current age in years.",
+            )
 
         if st.button("Predict Diabetes Risk"):
             input_data = {
@@ -742,18 +827,114 @@ def page_diabetes():
             }
 
             results = predict_diabetes(bundle, input_data)
-            st.subheader("Per-Model Predictions")
-            for name, r in results.items():
-                label = "Diabetes" if r["predicted_label"] == 1 else "No Diabetes"
-                prob = r["probability_diabetes"]
-                if prob is not None:
-                    st.write(f"**{name.upper()}** → {label} (P(diabetes)={prob:.3f})")
+
+            # --------------------------------------------------------------
+            # 3) OVERALL RISK SUMMARY
+            # --------------------------------------------------------------
+            st.subheader("Overall Risk Summary")
+
+            probs = [
+                r.get("probability_diabetes")
+                for r in results.values()
+                if r.get("probability_diabetes") is not None
+            ]
+
+            if probs:
+                avg_prob = float(sum(probs) / len(probs))
+                avg_percent = avg_prob * 100.0
+
+                # Simple thresholding for a human-friendly label
+                if avg_prob < 0.25:
+                    emoji = "🟢"
+                    level = "Low risk"
+                    note = "Most models think diabetes is unlikely."
+                elif avg_prob < 0.60:
+                    emoji = "🟡"
+                    level = "Moderate risk"
+                    note = "Some models show signs of possible diabetes."
                 else:
-                    st.write(f"**{name.upper()}** → {label} (probability N/A)")
+                    emoji = "🔴"
+                    level = "High risk"
+                    note = "Models see a high probability of diabetes."
+
+                st.markdown(
+                    f"""
+{emoji} **{level}**
+
+Estimated probability of diabetes (averaged across models):  
+**{avg_percent:.1f}%**
+
+_{note}_  
+"""
+                )
+            else:
+                st.info(
+                    "Models did not return diabetes probabilities. "
+                    "Per-model predictions are shown below."
+                )
+
+            # --------------------------------------------------------------
+            # 4) PER-MODEL BREAKDOWN (readable)
+            # --------------------------------------------------------------
+            st.subheader("Per-Model Predictions")
+
+            pretty_rows = []
+            for key, r in results.items():
+                prob = r.get("probability_diabetes")
+                label = r.get("predicted_label")
+
+                model_name = name_map.get(key, key.upper())
+
+                if prob is not None:
+                    prob_percent = prob * 100.0
+                else:
+                    prob_percent = None
+
+                if label == 1:
+                    base_verdict = "Model leans towards **Diabetes**"
+                else:
+                    base_verdict = "Model leans towards **No Diabetes**"
+
+                # Risk tag based on probability
+                if prob is None:
+                    risk_tag = "Risk level unknown"
+                elif prob < 0.25:
+                    risk_tag = "Low risk"
+                elif prob < 0.60:
+                    risk_tag = "Moderate risk"
+                else:
+                    risk_tag = "High risk"
+
+                pretty_rows.append(
+                    {
+                        "Model": model_name,
+                        "Verdict": base_verdict.replace("**", ""),
+                        "Risk level": risk_tag,
+                        "P(diabetes) (%)": prob_percent,
+                    }
+                )
+
+            if pretty_rows:
+                pretty_df = pd.DataFrame(pretty_rows)
+                st.table(
+                    pretty_df.style.format({"P(diabetes) (%)": "{:.1f}"})
+                )
+
+            # --------------------------------------------------------------
+            # 5) MEDICAL DISCLAIMER
+            # --------------------------------------------------------------
+            st.markdown(
+                """
+> ⚠️ **Important:**  
+> This tool is for **educational and demonstration purposes only** and does **not**
+> provide medical advice, diagnosis, or treatment.  
+> Always consult a qualified healthcare professional for any health-related decisions.
+"""
+            )
 
     with col_right:
         st.subheader("📔Notebook View")
-        show_notebook_viewer("notebooks/PredictingDiabetes.ipynb", height=600)
+        show_notebook_viewer("notebooks/PredictingDiabetes.ipynb", height=1900)
 
         if st.button("Open Jupyter File", key="open_diabetes_nb"):
             open_notebook_file("notebooks/PredictingDiabetes.ipynb")
