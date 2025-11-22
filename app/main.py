@@ -168,7 +168,7 @@ def page_overview():
     if logo_path.exists():
         st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
         # width is in pixels; tweak 900 → 1000 if you want even bigger
-        st.image(str(logo_path), width=900)
+        st.image(str(logo_path), width=1100)
         st.markdown("</div>", unsafe_allow_html=True)
     else:
         st.warning(f"Logo not found at: {logo_path}")
@@ -1105,11 +1105,50 @@ def page_sentiment():
 
         if st.button("Analyze Sentiment"):
             result = predict_sentiment(bundle, text)
-            st.write(f"Text: {result['text']}")
-            st.success(
-                f"Predicted: **{result['predicted_label']}** "
-                f"(class={result['predicted_class']}, confidence={result['confidence']:.4f})"
+            
+            label = result["predicted_label"]
+            class_id = result["predicted_class"]
+            confidence = result["confidence"]  # 0–1
+            confidence_pct = confidence * 100
+
+            # Friendly output
+            if label == "positive":
+                st.success(
+                    f"""
+                    😊 **Positive Sentiment**
+
+                    The model thinks this review is **positive**.
+                    Confidence: **{confidence_pct:.1f}%**
+                    """
+                )
+            else:
+                st.error(
+                    f"""
+                    😞 **Negative Sentiment**
+
+                    The model thinks this review is **negative**.
+                    Confidence: **{confidence_pct:.1f}%**
+                    """
+                )
+
+            # Explanation block
+            st.markdown("---")
+            st.markdown("**Your review:**")
+            st.markdown(f"> {result['text']}")
+            
+            st.markdown(
+                f"""
+                **What this means**
+                
+                - **Predicted sentiment:** {label}
+                - **Model confidence:** {confidence_pct:.1f}% (higher = more certain)
+                """
             )
+
+            # Advanced details
+            with st.expander("Advanced model details"):
+                st.write(f"Internal class id: {class_id} (0 = negative, 1 = positive)")
+                st.write(f"Raw confidence: {confidence:.4f}")
 
     with col_right:
         st.subheader("📔Notebook View")
