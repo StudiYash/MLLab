@@ -99,6 +99,8 @@ MLLab/
     <img src="https://github.com/StudiYash/MLLab/blob/main/assets/demo_images/home_screen.png" alt="Streamlit UI Home Page" width="75%" />
     </p>
 
+[![Application Interface Images](https://img.shields.io/badge/View-Application%20Interface%20Images-blue?style=for-the-badge&logo=github)](https://github.com/StudiYash/MLLab/tree/main/assets/demo_images)
+
 ---
 
 ## ⚠️ Disclaimer
