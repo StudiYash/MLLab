@@ -96,7 +96,7 @@ MLLab/
 ## ✨ Streamlit Interface
 
 <p align="center">
-    <img src="https://github.com/StudiYash/MLLab/blob/main/assets/home_screen.png" alt="Streamlit UI Home Page" width="75%" />
+    <img src="https://github.com/StudiYash/MLLab/blob/main/assets/demo_images/home_screen.png" alt="Streamlit UI Home Page" width="75%" />
     </p>
 
 ---

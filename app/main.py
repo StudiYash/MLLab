@@ -1287,7 +1287,7 @@ def page_spam():
 
 
 def page_stock():
-    st.title("📈 Stock Price Movement – Tesla")
+    st.title("📈 Stock Price Prediction")
     
     col_left, col_right = st.columns([1.1, 1.4])
 
