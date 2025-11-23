@@ -71,6 +71,14 @@ MLLab/
    streamlit run app/main.py
    ```
 
+   > **Note:** Some models (like Handwritten Digits, Spam Detection) may take a moment to train on the first run. They will be saved to the `models/` directory for faster loading in subsequent runs.
+
+## ⚠️ Disclaimer
+
+This application is for **educational and demonstration purposes only**. 
+- **Medical predictions** (Breast Cancer, Diabetes) are NOT medical advice.
+- **Financial/Survival predictions** (Stock, Titanic) are based on historical data and are not guarantees of future outcomes.
+
 ## 📌 Roadmap
 
 - Bring all 10 notebooks and datasets into this repo

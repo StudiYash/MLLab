@@ -2,3 +2,12 @@ streamlit
 numpy
 pandas
 scikit-learn
+matplotlib
+seaborn
+catboost
+tensorflow
+openpyxl
+xgboost
+nbformat
+nbconvert
+yfinance
