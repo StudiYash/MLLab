@@ -41,7 +41,11 @@ def load_stock_dataset() -> pd.DataFrame:
     path = get_tesla_csv_path()
     if not path.exists():
         raise FileNotFoundError(f"Stock dataset not found at {path}")
-    return pd.read_csv(path)
+    
+    try:
+        return pd.read_csv(path)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load stock data from {path}: {e}")
 
 def preprocess_stock_data(df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.Series]:
     """

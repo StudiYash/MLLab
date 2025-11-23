@@ -19,6 +19,10 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten, Input
 from tensorflow.keras.utils import to_categorical
 from sklearn.metrics import accuracy_score
+from tensorflow.keras.models import load_model
+import pickle
+import os
+from utils.config import MODELS_DIR
 
 @dataclass
 class DigitModelBundle:
@@ -118,6 +122,13 @@ def train_digit_model(
     """
     Trains the handwritten digit detection model.
     """
+    # Try loading first
+    try:
+        return _load_digit_model()
+    except (FileNotFoundError, OSError, ImportError):
+        # Fallback to training
+        pass
+
     X_train, X_val, y_train, y_val, input_shape, num_classes, class_labels = load_and_preprocess_digits(
         test_size=test_size, 
         random_state=random_state
@@ -152,7 +163,7 @@ def train_digit_model(
     n_train = int(X_train.shape[0])
     n_val = int(X_val.shape[0])
 
-    return DigitModelBundle(
+    bundle = DigitModelBundle(
         model=model,
         input_shape=input_shape,
         num_classes=num_classes,
@@ -163,6 +174,76 @@ def train_digit_model(
         metrics=metrics,
         n_train=n_train,
         n_val=n_val,
+    )
+    
+    # Save for next time
+    try:
+        _save_digit_model(bundle)
+    except Exception as e:
+        print(f"Warning: Could not save digit model: {e}")
+        
+    return bundle
+
+def _get_digits_model_paths() -> Tuple[Path, Path]:
+    """
+    Returns (model_file_path, metadata_file_path).
+    """
+    model_dir = MODELS_DIR / "handwritten_digits"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    return model_dir / "digits_mlp.h5", model_dir / "digits_metadata.pkl"
+
+def _save_digit_model(bundle: DigitModelBundle):
+    """
+    Saves the Keras model and metadata to disk.
+    """
+    model_path, meta_path = _get_digits_model_paths()
+    
+    # Save Keras model
+    bundle.model.save(model_path)
+    
+    # Save metadata
+    metadata = {
+        "input_shape": bundle.input_shape,
+        "num_classes": bundle.num_classes,
+        "class_labels": bundle.class_labels,
+        "X_val": bundle.X_val,
+        "y_val": bundle.y_val,
+        "val_accuracy": bundle.val_accuracy,
+        "metrics": bundle.metrics,
+        "n_train": bundle.n_train,
+        "n_val": bundle.n_val,
+    }
+    with open(meta_path, "wb") as f:
+        pickle.dump(metadata, f)
+
+def _load_digit_model() -> DigitModelBundle:
+    """
+    Loads the model and metadata from disk.
+    Raises FileNotFoundError if files are missing.
+    """
+    model_path, meta_path = _get_digits_model_paths()
+    
+    if not model_path.exists() or not meta_path.exists():
+        raise FileNotFoundError("Model files not found")
+        
+    # Load Keras model
+    model = load_model(model_path)
+    
+    # Load metadata
+    with open(meta_path, "rb") as f:
+        metadata = pickle.load(f)
+        
+    return DigitModelBundle(
+        model=model,
+        input_shape=metadata["input_shape"],
+        num_classes=metadata["num_classes"],
+        class_labels=metadata["class_labels"],
+        X_val=metadata["X_val"],
+        y_val=metadata["y_val"],
+        val_accuracy=metadata["val_accuracy"],
+        metrics=metadata["metrics"],
+        n_train=metadata["n_train"],
+        n_val=metadata["n_val"],
     )
 
 def predict_single_digit(bundle: DigitModelBundle, image_array: np.ndarray) -> Dict[str, object]:

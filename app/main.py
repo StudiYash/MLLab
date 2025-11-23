@@ -217,6 +217,39 @@ Use the **sidebar** to jump into any project and play with:
 """
     )
 
+def page_about():
+    import streamlit as st
+
+    st.title("ℹ️ About MLLab")
+    st.markdown("""
+    ### What is MLLab?
+    MLLab is an interactive machine learning laboratory containing multiple mini-projects, 
+    each demonstrating an ML workflow with clean UI, explanations, and model predictions.
+
+    ### Included Mini Projects
+    - 🩺 Breast Cancer Prediction  
+    - ✏️ Handwritten Digit Detection  
+    - 🏡 House Price Prediction  
+    - 🌸 Iris Flower Classification  
+    - 💉 Diabetes Prediction  
+    - 🚢 Titanic Survival Prediction  
+    - 🎭 Sentiment Analysis (IMDB Reviews)  
+    - 📧 Spam Email Detection  
+    - 📈 Stock Price Movement Prediction  
+    - 🎬 Movie Recommendation System  
+
+    ### How to Use the App
+    - Select a project from the sidebar  
+    - Enter the required inputs  
+    - View clean prediction outputs + probability insights  
+    - Read the Notebook View on the right for full analysis  
+
+    ### Important Note
+    These demos are for **educational purposes only**.  
+    Medical predictions (Breast Cancer, Diabetes) should **not** be used as clinical advice.
+    """)
+
+    st.info("If you encounter any errors, simply reload the page. Some models train on the first run.")
 
 def page_breast_cancer():
     st.title("🎗️ Breast Cancer Prediction")
@@ -1260,8 +1293,13 @@ def page_stock():
 
     with col_left:
         st.markdown("### 🧪 Interactive View")
-        bundle = get_stock_bundle()
-        df = get_stock_dataframe()
+        try:
+            bundle = get_stock_bundle()
+            df = get_stock_dataframe()
+        except Exception as e:
+            st.error("Unable to fetch latest Tesla data right now. Please check your internet connection or try again later.")
+            st.caption(f"Details: {e}")
+            return
 
         st.subheader("Model Validation Metrics")
         
@@ -1513,6 +1551,7 @@ def main():
 
     pages = {
         "Overview": page_overview,
+        "About / Help": page_about,
         "Breast Cancer Prediction": page_breast_cancer,
         "Handwritten Digit Detection": page_handwritten_digits,
         "House Price Prediction": page_house_price,
@@ -1527,7 +1566,6 @@ def main():
 
     st.sidebar.title("🔭 MLLab Projects")
     
-    # Changed from selectbox to radio for vertical list
     choice = st.sidebar.radio(
         "Choose a mini-project",
         list(pages.keys())

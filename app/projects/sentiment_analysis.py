@@ -31,12 +31,13 @@ class SentimentModelBundle:
     max_len: int              # max sequence length used for padding
     label_map: Dict[int, str] # {0: "negative", 1: "positive"}
 
+from utils.config import MODELS_DIR
+
 def get_sentiment_model_dir() -> Path:
     """
     Returns the path to models/sentiment_analysis_movie_reviews.
     """
-    root = Path(__file__).resolve().parents[2]  # repo root
-    return root / "models" / "sentiment_analysis_movie_reviews"
+    return MODELS_DIR / "sentiment_analysis_movie_reviews"
 
 def get_sentiment_model_path() -> Path:
     return get_sentiment_model_dir() / "imdb_lstm_sentiment.h5"

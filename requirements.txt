@@ -10,3 +10,4 @@ openpyxl
 xgboost
 nbformat
 nbconvert
+yfinance

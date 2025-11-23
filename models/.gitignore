@@ -1,0 +1,7 @@
+# Ignore large model files
+*.h5
+*.keras
+*.pt
+*.pkl
+*.joblib
+*.npz

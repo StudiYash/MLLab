@@ -18,6 +18,10 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Embedding, LSTM, Dense
+from tensorflow.keras.models import load_model
+import pickle
+import os
+from utils.config import MODELS_DIR
 
 @dataclass
 class SpamModelBundle:
@@ -106,6 +110,12 @@ def train_spam_model(
     """
     Trains an LSTM model on the spam dataset.
     """
+    # Try loading first
+    try:
+        return _load_spam_model()
+    except (FileNotFoundError, OSError, ImportError):
+        pass
+
     texts, labels, label_map = load_spam_dataset()
     
     # Tokenization
@@ -138,13 +148,59 @@ def train_spam_model(
         verbose=0
     )
     
-    return SpamModelBundle(
+    bundle = SpamModelBundle(
         model=model,
         tokenizer=tokenizer,
         max_len=max_len,
         label_map=label_map,
         vocab_size=max_words,
         history=history.history
+    )
+    
+    # Save
+    try:
+        _save_spam_model(bundle)
+    except Exception as e:
+        print(f"Warning: Could not save spam model: {e}")
+        
+    return bundle
+
+def _get_spam_model_paths() -> Tuple[Path, Path]:
+    model_dir = MODELS_DIR / "spam_detection"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    return model_dir / "spam_lstm.h5", model_dir / "spam_metadata.pkl"
+
+def _save_spam_model(bundle: SpamModelBundle):
+    model_path, meta_path = _get_spam_model_paths()
+    bundle.model.save(model_path)
+    
+    metadata = {
+        "tokenizer": bundle.tokenizer,
+        "max_len": bundle.max_len,
+        "label_map": bundle.label_map,
+        "vocab_size": bundle.vocab_size,
+        "history": bundle.history
+    }
+    with open(meta_path, "wb") as f:
+        pickle.dump(metadata, f)
+
+def _load_spam_model() -> SpamModelBundle:
+    model_path, meta_path = _get_spam_model_paths()
+    
+    if not model_path.exists() or not meta_path.exists():
+        raise FileNotFoundError("Spam model files not found")
+        
+    model = load_model(model_path)
+    with open(meta_path, "rb") as f:
+        metadata = pickle.load(f)
+        
+    return SpamModelBundle(
+        model=model,
+        tokenizer=metadata["tokenizer"],
+        max_len=metadata["max_len"],
+        label_map=metadata["label_map"],
+        vocab_size=metadata["vocab_size"],
+        history=metadata.get("history")
     )
 
 def preprocess_emails(bundle: SpamModelBundle, emails: List[str]) -> np.ndarray:
