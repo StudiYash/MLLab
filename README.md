@@ -1,12 +1,29 @@
-# MLLab – Interactive Machine Learning Lab
+# ![MLLab](https://github.com/StudiYash/MLLab/blob/main/assets/logo.png)
 
-## 🚀 Overview
+## 🛡️ Project Introduction
 
-MLLab is a unified home for multiple small ML/DL projects (regression, classification, NLP, recommender systems, time-series/stock movement, etc.).
-
+### Abstract 
+**MLLab** is a unified home for multiple small ML/DL projects (regression, classification, NLP, recommender systems, time-series/stock movement, etc.).
 Originally, each project was a standalone notebook; now they are being refactored into a single, organized, Streamlit-based lab.
-
 The goal is both: learning (understanding different ML tasks) and portfolio (presenting them as one cohesive app).
+
+### Project Timeline 
+
+- **Start Date**: 20th November 2025  
+- **End Date**: 23rd November 2025 
+- **Total Time Required**: 4 days 
+
+### My Introduction  
+
+| Name                   | GitHub Profile | LinkedIn Profile |
+|------------------------|----------------|------------------|
+| **Yash Suhas Shukla**  | [GitHub](https://github.com/StudiYash) | [LinkedIn](https://www.linkedin.com/in/yash-shukla-2024aiguy/) |
+
+<div align="center">
+  <img src="https://github.com/StudiYash/MLLab/blob/main/assets/About%20Me.gif" alt="Introduction GIF" width="800" height="450">
+</div>
+
+---
 
 ## 🧩 Included Mini Projects
 
@@ -79,10 +96,3 @@ This application is for **educational and demonstration purposes only**.
 - **Medical predictions** (Breast Cancer, Diabetes) are NOT medical advice.
 - **Financial/Survival predictions** (Stock, Titanic) are based on historical data and are not guarantees of future outcomes.
 
-## 📌 Roadmap
-
-- Bring all 10 notebooks and datasets into this repo
-- Refactor each project into `train_model() / load_model() / predict()` modules
-- Build per-project Streamlit pages with Code + Interaction tabs
-- Add model comparison summaries and metrics dashboards
-- Polish UI/UX and documentation
