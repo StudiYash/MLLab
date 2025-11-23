@@ -56,6 +56,8 @@ MLLab/
   README.md
 ```
 
+---
+
 ## 🛠 Tech Stack
 
 - Python 3.x
@@ -65,6 +67,7 @@ MLLab/
 - XGBoost, CatBoost (where used)
 - Pandas, NumPy, Matplotlib, Seaborn
 
+---
 ## ▶️ How to Run
 
 1. **Create and activate a virtual environment** (optional but recommended):
@@ -90,9 +93,57 @@ MLLab/
 
    > **Note:** Some models (like Handwritten Digits, Spam Detection) may take a moment to train on the first run. They will be saved to the `models/` directory for faster loading in subsequent runs.
 
+## ✨ Streamlit Interface
+
+<p align="center">
+    <img src="https://github.com/StudiYash/MLLab/blob/main/assets/home_screen.png" alt="Streamlit UI Home Page" width="75%" />
+    </p>
+
+---
+
 ## ⚠️ Disclaimer
 
 This application is for **educational and demonstration purposes only**. 
 - **Medical predictions** (Breast Cancer, Diabetes) are NOT medical advice.
 - **Financial/Survival predictions** (Stock, Titanic) are based on historical data and are not guarantees of future outcomes.
 
+## How You Can Help 🙌
+
+Even though it's free to use, **MLLab** grows best when the community jumps in!
+
+- 🧩 Add new mini-projects or ML experiments
+- 🛠 Refactor code, clean notebooks, or optimize pipelines
+- 📊 Improve visualizations, metrics, and explanations
+- 🧪 Create exercises, challenges, or “try it yourself” sections
+- 🐛 Report bugs or suggest new features via issues
+
+> Just fork the repo, push your changes, and open a pull request.  
+> Every small improvement makes MLLab a better lab for everyone. ⚗️
+
+---
+
+## License & Usage 📜
+
+This project is governed by the **Creative Commons Zero (CC0 1.0 Universal)** license.
+
+> **That means:**  
+> 🔓 You can **use, modify, share, teach, remix, or build** on this work freely — even for **commercial** purposes.  
+> 🎁 **No permission or attribution required.** This is my gift to the Python community.
+
+🔗 [View Full License Text → CC0 1.0 Universal](https://creativecommons.org/publicdomain/zero/1.0/)
+
+![License: CC0 1.0](https://img.shields.io/badge/License-CC0%201.0-lightgrey.svg)
+
+---
+
+## Final Words ❤️
+
+> Machine Learning feels complex — but it doesn’t have to stay mysterious.  
+> **MLLab** is here to turn scattered ML concepts into clear, hands-on mini-projects you can actually run, tweak, and learn from.
+
+If you found this helpful, consider **starring the repository ⭐**,  
+sharing it with a friend, or contributing a new experiment.
+
+---
+
+**Stay curious. Experiment boldly. Build ML projects that actually run. ⚗️🤖**
